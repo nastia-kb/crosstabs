@@ -335,9 +335,15 @@ if st.session_state.stage == 3:
                 if need_weight:
                     wts = data.loc[temp_data.index, "wt"]
                     sums = np.sum(temp_data * wts)
-                    average = np.average(temp_data, weights=wts)
-                    variance = np.average((temp_data-average)**2, weights=wts)
-                    std = np.sqrt(variance)
+                    if wts.sum() > 0:
+                        average = np.average(temp_data, weights=wts)
+                        variance = np.average((temp_data-average)**2, weights=wts)
+                        std = np.sqrt(variance)
+                    else:
+                        average = np.nan
+                        variance = np.nan
+                        std = np.nan
+
                     base = temp_data.count()
                     base_wt = wts.sum()
                     table = pd.DataFrame({"Общий итог" : [sums, average, std, base, base_wt]}, index = ["Сумма", "Среднее", "Стандартное отклонение", "База", "Взвешенная база"])
@@ -359,9 +365,14 @@ if st.session_state.stage == 3:
                         if need_weight:
                             wts = data.loc[group_index_fin, "wt"]
                             sums = np.sum(group_data * wts)
-                            average = np.average(group_data, weights=wts)
-                            variance = np.average((group_data-average)**2, weights=wts)
-                            std = np.sqrt(variance)
+                            if wts.sum()>0:
+                                average = np.average(group_data, weights=wts)
+                                variance = np.average((group_data-average)**2, weights=wts)
+                                std = np.sqrt(variance)
+                            else:
+                                average = np.nan
+                                variance = np.nan
+                                std = np.nan
                             base = group_data.count()
                             base_wt = wts.sum()
                             group_table = pd.DataFrame({group[group.find("__")+2:]: [sums, average, std, base, base_wt]}, index = ["Сумма", "Среднее", "Стандартное отклонение", "База", "Взвешенная база"])
