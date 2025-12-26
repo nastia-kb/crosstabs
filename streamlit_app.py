@@ -333,7 +333,7 @@ if st.session_state.stage == 3:
                 temp_data.dropna(inplace = True)
 
                 if need_weight:
-                    wts = data.iloc[temp_data.index, "wt"]
+                    wts = data.loc[temp_data.index, "wt"]
                     sums = np.sum(temp_data * wts)
                     average = np.average(temp_data, weights=wts)
                     variance = np.average((temp_data-average)**2, weights=wts)
@@ -357,7 +357,7 @@ if st.session_state.stage == 3:
                         group_data = temp_data.loc[group_index_fin]
 
                         if need_weight:
-                            wts = data.iloc[group_index_fin, "wt"]
+                            wts = data.loc[group_index_fin, "wt"]
                             sums = np.sum(group_data * wts)
                             average = np.average(group_data, weights=wts)
                             variance = np.average((group_data-average)**2, weights=wts)
