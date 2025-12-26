@@ -81,7 +81,7 @@ if st.session_state.stage == 1:
              var_name = param_names.at[f"{var}1", 0]
              var_name = var_name[:var_name.rfind(" - ")]
         elif temp.shape[1] == 1:
-            temp = temp.squeeze()
+            temp = temp.dropna().squeeze()
             if pd.to_numeric(temp, errors = "coerce").count() > temp.shape[0]*0.75:
                 var_type = "Число"
                 var_name = param_names.at[f"{var}", 0]
