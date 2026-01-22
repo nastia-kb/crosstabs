@@ -204,7 +204,7 @@ if st.session_state.stage == 3:
         matrix_table = pd.DataFrame()
         matrix_row_n = 0
         last_matrix = var_df.loc[var_df["Тип вопроса"].isin(["Матрица. Один ответ", "Матрица. Множественный ответ", "Матрица. Шкала"]), "Переменная"].values
-        if len(last_matrix.shape) > 0:
+        if len(last_matrix) > 0:
             last_matrix = last_matrix[-1]
 
         for var in unique_vars:
