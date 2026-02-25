@@ -76,7 +76,6 @@ if st.session_state.stage == 1:
                     var_type = "Матрица. Множественный ответ"
                     var_name = param_names.at[temp.columns[0], 0]
                     var_name = var_name[:var_name.rfind(" - ")]
-                    print(var_name)
                 elif temp[var].nunique() == 5:
                     answers = "".join(temp[var].dropna().unique())
                     answers = answers.lower()
