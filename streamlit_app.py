@@ -74,8 +74,9 @@ if st.session_state.stage == 1:
         if "_r" in var:
                 if temp.shape[1] > 1:
                     var_type = "Матрица. Множественный ответ"
-                    var_name = param_names.at[f"{var}1_", 0]
+                    var_name = param_names.at[temp.columns[0], 0]
                     var_name = var_name[:var_name.rfind(" - ")]
+                    print(var_name)
                 elif temp[var].nunique() == 5:
                     answers = "".join(temp[var].dropna().unique())
                     answers = answers.lower()
@@ -88,7 +89,7 @@ if st.session_state.stage == 1:
                     var_name = param_names.at[f"{var}", 0]
         elif temp.shape[1] > 1:
              var_type = "Множественный ответ"
-             var_name = param_names.at[f"{var}1", 0]
+             var_name = param_names.at[temp.columns[0], 0]
              var_name = var_name[:var_name.rfind(" - ")]
         elif temp.shape[1] == 1:
             temp = temp.dropna().squeeze()
