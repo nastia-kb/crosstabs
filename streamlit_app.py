@@ -251,7 +251,7 @@ if st.session_state.stage == 3:
 
                     for i in test:
                         text = i.lower().replace(" ", "")
-                        if "отчасти" in text or "возможно" in text or "никак" in text:
+                        if "отчасти" in text or "возможно" in text or "никак" in text or "неизмен" in text:
                             new_i = "3. "+i
                         elif "совсемне" in text or "совершенноне" in text or "точноне" in text or "определенноухудш" in text or "однозначноне" in text or "определенноне" in text:
                             new_i = "1. "+i
