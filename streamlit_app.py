@@ -105,7 +105,7 @@ if st.session_state.stage == 1:
                 else:
                     var_type = "Один ответ"
                     var_name = param_names.at[f"{var}", 0]
-            elif temp.nunique() > 150: 
+            elif temp.nunique() > 100: 
                 var_type = "Открытый вопрос (не будет в таблицах)"
                 var_name = param_names.at[f"{var}", 0]
             else:
