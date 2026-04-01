@@ -169,6 +169,7 @@ if st.session_state.stage == 3:
 
     new_data = pd.DataFrame()
     data.replace(0, np.nan, inplace = True)
+    data = data.astype("object")
 
     for var in unique_vars:
         temp_data = data.filter(like = var)
