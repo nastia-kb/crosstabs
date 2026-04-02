@@ -5,7 +5,8 @@ import io
 
 st.title("Вывод таблиц")
 
-st.info("Здесь можно вывести кросс-таблицы со взвешиванием и без для опроса EnjoySurvey", 
+st.info("Здесь можно вывести кросс-таблицы со взвешиванием и без для опроса EnjoySurvey\n\n" \
+"[Инструкция по работе](%s)" % "https://drive.google.com/file/d/1qnguxoMI2PBqxKcI_zZxYvncynFqylJp/view?usp=drive_linkl", 
         icon="💡")
 
 with st.expander("Краткое описание"):
@@ -126,7 +127,21 @@ if st.session_state.stage == 1:
 if st.session_state.stage == 2:
     with st.form(key='my_form'):
         need_weight = st.checkbox("Взвесить данные (в базе должен быть **столбец wt**)")
+        
         st.session_state["need_weight"] = need_weight
+        option_map = {
+            0: "Нет",
+            1.645: "90%",
+            1.96: "95%",
+        }
+        selection = st.segmented_control(
+        "Сравнить разрезы с тоталом?",
+        options=option_map.keys(),
+        format_func=lambda option: option_map[option],
+        selection_mode="single",
+        default = 0,
+        )
+        
         st.write("Проверьте, верно ли определены типы вопросов, и отметьте переменные, по которым необходимо вывести разрезы")
         edited_df_in_form = st.data_editor(
             st.session_state["var_df"],
@@ -157,6 +172,7 @@ if st.session_state.stage == 2:
 
     if submit_button:
         st.session_state["var_df"] = edited_df_in_form
+        st.session_state["z_score"] = selection
         set_state(3)
 
 if st.session_state.stage == 3:
@@ -166,7 +182,8 @@ if st.session_state.stage == 3:
     slices = var_df.loc[var_df["Вывести разрез"], "Переменная"].to_list()
     unique_vars = var_df["Переменная"].to_list()
     need_weight = st.session_state["need_weight"]
-
+    z_crit = st.session_state["z_score"]
+    
     new_data = pd.DataFrame()
     data.replace(0, np.nan, inplace = True)
     data = data.astype("object")
@@ -281,7 +298,7 @@ if st.session_state.stage == 3:
 
                 table.index.name = var_df.loc[var_df["Переменная"] == var, "Вопрос"].values[0]
 
-                if var_type in ["Матрица. Один ответ", "Матрица. Множественный ответ", "Шкала", "Матрица. Шкала"]:
+                if var_type in ["Матрица. Один ответ", "Матрица. Множественный ответ", "Матрица. Шкала"]:
                     matrix_var_curr = var.split("_")[0]
 
                     if matrix_var_curr != matrix_var_prev or var == last_matrix:
@@ -316,20 +333,92 @@ if st.session_state.stage == 3:
                         temp_matrix = table["Общий итог"]
                         temp_matrix.rename(var_df.loc[var_df["Переменная"] == var, "Вопрос"].values[0], inplace = True)
                         matrix_table = pd.concat([matrix_table, temp_matrix], axis = 1)
+                
+                
+                if z_crit > 0:
 
-                table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
-                workbook = writer.book
-                worksheet = writer.sheets["tables"]
+                    if need_weight:
+                        bases = table.iloc[-2, :]
+                        shares = table.iloc[:-2,:]
+                    else:
+                        bases = table.iloc[-1, :]
+                        shares = table.iloc[:-1,:]
+                    colored_cells = {}
+                    for col in range(1, table.shape[1]):
+                        for row in range(table.shape[0]):
+                            if need_weight:
+                                is_percent_row = row < table.shape[0] - 2
+                            else:
+                                is_percent_row = row < table.shape[0] - 1
                             
-                percent_format = workbook.add_format({'num_format': '0.00%'})
+                            if not is_percent_row:
+                                continue
+                            p1 = shares.iloc[row, 0]
+                            p2 = shares.iloc[row, col]
+                            n1 = bases.iloc[0]
+                            n2 = bases.iloc[col]
+                            p = (p1*n1 + p2*n2) / (n1+n2)
+                            se = np.sqrt(p*(1-p)*(1/n1 + 1/n2))
+                            if se == 0:
+                                continue
+                            z = (p2 - p1) / se
+                            if abs(z) >= z_crit:
+                                if p2 > p1:
+                                    colored_cells[(row, col)] = 'up'
+                                else:
+                                    colored_cells[(row, col)] = 'down'
+                    
+                    table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
+                    workbook = writer.book
+                    worksheet = writer.sheets["tables"]
 
-                if need_weight:        
-                    rows_to_format = [r for r in range(rows_n, (rows_n+table.shape[0])-1)]
+                    percent_format = workbook.add_format({'num_format': '0.00%'})
+    
+                    green_percent = workbook.add_format({
+                        'bg_color': '#C6EFCE',
+                        'num_format': '0.00%'
+                    })
+                    
+                    red_percent = workbook.add_format({
+                        'bg_color': '#FFC7CE',
+                        'num_format': '0.00%'
+                    })
+                    
+                    number_format = workbook.add_format({'num_format': '0.00'})
+                    
+                    for row_idx in range(table.shape[0]):
+                        excel_row = rows_n + row_idx + 1
+                        
+                        if need_weight:
+                            is_percent_row = row_idx < table.shape[0] - 2
+                        else:
+                            is_percent_row = row_idx < table.shape[0] - 1
+                        
+                        for col_idx in range(table.shape[1]):
+                            excel_col = col_idx + 1 
+                            value = table.iloc[row_idx, col_idx]
+                            
+                            if is_percent_row:
+                                cell_color = colored_cells.get((row_idx, col_idx))
+                                
+                                if cell_color == 'up':
+                                    format_to_use = green_percent
+                                elif cell_color == 'down':
+                                    format_to_use = red_percent
+                                else:
+                                    format_to_use = percent_format
+                            else:
+                                format_to_use = number_format
+                            
+                            try:
+                                worksheet.write_number(excel_row, excel_col, value, format_to_use)
+                            except:
+                                pass
+
                 else:
-                    rows_to_format = [r for r in range(rows_n, (rows_n+table.shape[0]))]
-
-                for row in rows_to_format:
-                    worksheet.set_row(row, cell_format = percent_format)
+                    table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
+                    workbook = writer.book
+                    worksheet = writer.sheets["tables"]
 
                 rows_n = rows_n + table.shape[0]+3
 
