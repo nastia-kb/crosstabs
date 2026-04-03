@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import io
+from scipy.stats import t
 
 st.title("Вывод таблиц")
 
@@ -357,6 +358,8 @@ if st.session_state.stage == 3:
                             p2 = shares.iloc[row, col]
                             n1 = bases.iloc[0]
                             n2 = bases.iloc[col]
+                            if n2 < 30:
+                                continue
                             p = (p1*n1 + p2*n2) / (n1+n2)
                             se = np.sqrt(p*(1-p)*(1/n1 + 1/n2))
                             if se == 0:
@@ -384,7 +387,7 @@ if st.session_state.stage == 3:
                         'num_format': '0.00%'
                     })
                     
-                    number_format = workbook.add_format({'num_format': '0.00'})
+                    number_format = workbook.add_format({'num_format': '0'})
                     
                     for row_idx in range(table.shape[0]):
                         excel_row = rows_n + row_idx + 1
@@ -419,9 +422,55 @@ if st.session_state.stage == 3:
                     table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
                     workbook = writer.book
                     worksheet = writer.sheets["tables"]
+                    percent_format = workbook.add_format({'num_format': '0.00%'})
+                    if need_weight:        
+                        rows_to_format = [r for r in range(rows_n, (rows_n+table.shape[0])-1)]
+                    else:
+                        rows_to_format = [r for r in range(rows_n, (rows_n+table.shape[0]))]
+                    for row in rows_to_format:
+                        worksheet.set_row(row, cell_format = percent_format)
 
                 rows_n = rows_n + table.shape[0]+3
 
+            def highlight_mean_significance(df, alpha=z_crit):
+                bases = df.loc["База"].astype(float)
+                means = df.loc["Среднее"].astype(float)
+                stds = df.loc["Стандартное отклонение"].astype(float)
+
+                if alpha == 1.96:
+                    alpha = 0.05
+                else:
+                    alpha = 0.10
+
+                colors = pd.DataFrame("", index=df.index, columns=df.columns)
+                m1 = means["Общий итог"]
+                s1 = stds["Общий итог"]
+                n1 = bases["Общий итог"]
+                for col in df.columns[1:]:
+                    m2 = means[col]
+                    s2 = stds[col]
+                    n2 = bases[col]
+                    if n2 < 30:
+                        continue
+                    se = np.sqrt((s1**2)/n1 + (s2**2)/n2)
+                    if se == 0:
+                        continue
+                    t_stat = (m2 - m1) / se
+                    dfree = ((s1**2/n1 + s2**2/n2)**2) / (
+                        ((s1**2/n1)**2)/(n1-1) + ((s2**2/n2)**2)/(n2-1)
+                        )
+                    t_crit = t.ppf(1 - alpha/2, dfree)
+                    if abs(t_stat) >= t_crit:
+                        if m2 > m1:
+                            colors.loc["Среднее", col] = "background-color: #C6EFCE"
+                        else:
+                            colors.loc["Среднее", col] = "background-color: #FFC7CE"
+                styler = df.style
+
+                styler = styler.apply(
+                    lambda _: colors, axis=None)
+
+                return styler
             if var_type == "Число":
                 temp_data = pd.to_numeric(data[var].dropna(), errors = "coerce")
                 temp_check_list = pd.Series(temp_data.to_numpy().flatten())
@@ -490,7 +539,11 @@ if st.session_state.stage == 3:
                         table = pd.concat([table, group_table], axis = 1)
 
                 table.index.name = var_df.loc[var_df["Переменная"] == var, "Вопрос"].values[0]
-                table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
+                if z_crit > 0:
+                    fin_table = highlight_mean_significance(table, alpha = z_crit)
+                    fin_table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
+                else:
+                    table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
                 workbook = writer.book
                 worksheet = writer.sheets["tables"]
                 rows_n = rows_n + table.shape[0]+3           
