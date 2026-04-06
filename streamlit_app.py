@@ -202,7 +202,7 @@ if st.session_state.stage == 3:
             names = param_names.filter(like = var).iloc[0,:].tolist()
             for i in names:
                 if len(i.split(" - "))>1:
-                    name = i.split(" - ")[1]
+                    name = i.split(" - ")[-1]
                 else:
                     name = " "
                 new_names.append(var+"_"+name)
