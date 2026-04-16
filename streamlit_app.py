@@ -128,8 +128,11 @@ if st.session_state.stage == 1:
 if st.session_state.stage == 2:
     with st.form(key='my_form'):
         need_weight = st.checkbox("Взвесить данные (в базе должен быть **столбец wt**)")
-        
+        need_freqs = st.checkbox("Вывести частотные таблицы")
+
         st.session_state["need_weight"] = need_weight
+        st.session_state["need_freqs"] = need_freqs
+
         option_map = {
             0: "Нет",
             1.645: "90%",
@@ -292,12 +295,14 @@ if st.session_state.stage == 3:
                     table = pd.concat([counts, bases])               
 
                 table = table.astype(float)
+                freq_table = table.copy()
                 if need_weight:
                     table[:-2] = table[:-2].div(table.iloc[-1])
                 else:
                     table[:-1] = table[:-1].div(table.iloc[-1])
 
                 table.index.name = var_df.loc[var_df["Переменная"] == var, "Вопрос"].values[0]
+                freq_table.index.name = var_df.loc[var_df["Переменная"] == var, "Вопрос"].values[0]
 
                 if var_type in ["Матрица. Один ответ", "Матрица. Множественный ответ", "Матрица. Шкала"]:
                     matrix_var_curr = var.split("_")[0]
@@ -429,6 +434,11 @@ if st.session_state.stage == 3:
                         rows_to_format = [r for r in range(rows_n, (rows_n+table.shape[0]))]
                     for row in rows_to_format:
                         worksheet.set_row(row, cell_format = percent_format)
+                
+                if need_freqs:
+                    freq_table.to_excel(writer, sheet_name='frequencies', merge_cells = True, startrow=rows_n, startcol=0)
+                    workbook = writer.book
+                    worksheet = writer.sheets["frequencies"]
 
                 rows_n = rows_n + table.shape[0]+3
 
@@ -471,6 +481,7 @@ if st.session_state.stage == 3:
                     lambda _: colors, axis=None)
 
                 return styler
+            
             if var_type == "Число":
                 temp_data = pd.to_numeric(data[var].dropna(), errors = "coerce")
                 temp_check_list = pd.Series(temp_data.to_numpy().flatten())
@@ -544,6 +555,12 @@ if st.session_state.stage == 3:
                     fin_table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
                 else:
                     table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
+
+                if need_freqs:
+                    table.to_excel(writer, sheet_name='frequencies', merge_cells = True, startrow=rows_n, startcol=0)
+                    workbook = writer.book
+                    worksheet = writer.sheets["frequencies"]
+
                 workbook = writer.book
                 worksheet = writer.sheets["tables"]
                 rows_n = rows_n + table.shape[0]+3           
