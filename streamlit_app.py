@@ -101,7 +101,7 @@ if st.session_state.stage == 1:
                 answers = "".join(temp.dropna().unique())
                 answers = answers.lower()
                 answers = answers.replace(" ", "")
-                if "скореене" in answers:
+                if "скореене" in answers or "скорееулуч" in answers:
                     var_type = "Шкала"
                     var_name = param_names.at[f"{var}", 0]
                 else:
