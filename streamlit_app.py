@@ -94,6 +94,9 @@ if st.session_state.stage == 1:
              var_name = var_name[:var_name.rfind(" - ")]
         elif temp.shape[1] == 1:
             temp = temp.dropna().squeeze()
+            if temp.nunique() == 1:
+                unique_vars.remove(var)
+                continue
             if pd.to_numeric(temp, errors = "coerce").count() > temp.shape[0]*0.75:
                 var_type = "Число"
                 var_name = param_names.at[f"{var}", 0]
@@ -443,6 +446,7 @@ if st.session_state.stage == 3:
                 rows_n = rows_n + table.shape[0]+3
 
             def highlight_mean_significance(df, alpha=z_crit):
+
                 bases = df.loc["База"].astype(float)
                 means = df.loc["Среднее"].astype(float)
                 stds = df.loc["Стандартное отклонение"].astype(float)
@@ -456,10 +460,11 @@ if st.session_state.stage == 3:
                 m1 = means["Общий итог"]
                 s1 = stds["Общий итог"]
                 n1 = bases["Общий итог"]
-                for col in df.columns[1:]:
-                    m2 = means[col]
-                    s2 = stds[col]
-                    n2 = bases[col]
+
+                for col in range(1, table.shape[0]):
+                    m2 = means.iloc[col]
+                    s2 = stds.iloc[col]
+                    n2 = bases.iloc[col]
                     if n2 < 30:
                         continue
                     se = np.sqrt((s1**2)/n1 + (s2**2)/n2)
@@ -470,11 +475,12 @@ if st.session_state.stage == 3:
                         ((s1**2/n1)**2)/(n1-1) + ((s2**2/n2)**2)/(n2-1)
                         )
                     t_crit = t.ppf(1 - alpha/2, dfree)
+
                     if abs(t_stat) >= t_crit:
                         if m2 > m1:
-                            colors.loc["Среднее", col] = "background-color: #C6EFCE"
+                            colors.loc["Среднее", df.columns[col]] = "background-color: #C6EFCE"
                         else:
-                            colors.loc["Среднее", col] = "background-color: #FFC7CE"
+                            colors.loc["Среднее", df.columns[col]] = "background-color: #FFC7CE"
                 styler = df.style
 
                 styler = styler.apply(
@@ -548,8 +554,13 @@ if st.session_state.stage == 3:
                             group_table = pd.DataFrame({group[group.find("__")+2:] : [sums, average, std, base]}, index = ["Сумма", "Среднее", "Стандартное отклонение", "База"])
                         
                         table = pd.concat([table, group_table], axis = 1)
+                counts = {}
 
+                table.columns = [f"{c}_{counts.setdefault(c, -1) + 1}" if table.columns.tolist().count(c) > 1 else c 
+                    for c in table.columns if not counts.update({c: counts.get(c, -1) + 1})]
+                
                 table.index.name = var_df.loc[var_df["Переменная"] == var, "Вопрос"].values[0]
+                
                 if z_crit > 0:
                     fin_table = highlight_mean_significance(table, alpha = z_crit)
                     fin_table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
