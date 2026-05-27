@@ -85,6 +85,9 @@ if st.session_state.stage == 1:
                     if "скореене" in answers:
                         var_type = "Матрица. Шкала"
                         var_name = param_names.at[f"{var}", 0]
+                    else:
+                        var_type = "Матрица. Один ответ"
+                        var_name = param_names.at[f"{var}", 0]
                 else:
                     var_type = "Матрица. Один ответ"
                     var_name = param_names.at[f"{var}", 0]
@@ -559,8 +562,11 @@ if st.session_state.stage == 3:
                 table.index.name = var_df.loc[var_df["Переменная"] == var, "Вопрос"].values[0]
                 
                 if z_crit > 0:
-                    fin_table = highlight_mean_significance(table, alpha = z_crit)
-                    fin_table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
+                    try:
+                        fin_table = highlight_mean_significance(table, alpha = z_crit)
+                    except: 
+                        table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
+                    table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
                 else:
                     table.to_excel(writer, sheet_name='tables', merge_cells = True, startrow=rows_n, startcol=0)
 
