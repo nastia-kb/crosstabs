@@ -468,8 +468,15 @@ if st.session_state.stage == 2:
         # Summary of all active recode definitions
         if _recode_defs:
             for _rcode, _rdef in _recode_defs.items():
+                _lmap = _rdef.get("col_label_map", {})
                 _groups_str = ", ".join(
-                    f"«{g}» ({len(v)} зн.)" for g, v in _rdef["groups"].items()
+                    "«{}»: {}".format(
+                        g,
+                        ", ".join(_lmap.get(c, c) for c in v)
+                        if _rdef["var_type"] == "multiple"
+                        else ", ".join(str(x) for x in v)
+                    )
+                    for g, v in _rdef["groups"].items()
                 )
                 st.markdown(f"- **{_rdef['source_label']}** → {_groups_str}")
             st.divider()
@@ -512,12 +519,16 @@ if st.session_state.stage == 2:
                 if _sel_type in ["Один ответ", "Шкала"]:
                     _col_data = _data[_sel_var].dropna()
                     _value_counts = _col_data.value_counts()
-                    st.write("**Значения переменной:**")
-                    _vc_df = pd.DataFrame({
-                        "Значение": _value_counts.index.tolist(),
-                        "Количество ответов": _value_counts.values.tolist()
-                    })
-                    st.dataframe(_vc_df, hide_index=True, use_container_width=False)
+
+                    with st.expander("Распределение ответов", expanded=False):
+                        st.dataframe(
+                            pd.DataFrame({
+                                "Значение": _value_counts.index.tolist(),
+                                "Количество ответов": _value_counts.values.tolist()
+                            }),
+                            hide_index=True,
+                            use_container_width=False
+                        )
 
                     _used = set()
                     for _gvals in _var_rules.values():
@@ -528,32 +539,32 @@ if st.session_state.stage == 2:
 
                 else:  # Множественный ответ
                     _src_cols = _data.filter(like=_sel_var)
-                    _col_label_map = {}
-                    for _col in _src_cols.columns:
-                        if _col in _param_names.columns:
-                            _full = str(_param_names[_col].iloc[0])
-                            _opt = _full.split(" - ")[-1] if " - " in _full else _full
-                            _col_label_map[_col] = _opt
-                        else:
-                            _col_label_map[_col] = _col
+                    # Use stored col_label_map if already created, else build it
+                    if _derived_code and "col_label_map" in _recode_defs.get(_derived_code, {}):
+                        _col_label_map = _recode_defs[_derived_code]["col_label_map"]
+                    else:
+                        _col_label_map = {}
+                        for _col in _src_cols.columns:
+                            if _col in _param_names.columns:
+                                _full = str(_param_names[_col].iloc[0])
+                                _opt = _full.split(" - ")[-1] if " - " in _full else _full
+                                _col_label_map[_col] = _opt
+                            else:
+                                _col_label_map[_col] = _col
 
                     _used_cols = set()
                     for _gvals in _var_rules.values():
                         _used_cols.update(_gvals)
 
-                    _opt_counts = {
-                        lbl: int(_src_cols[col].notna().sum())
-                        for col, lbl in _col_label_map.items()
-                    }
-                    st.write("**Варианты ответа:**")
-                    st.dataframe(
-                        pd.DataFrame({
-                            "Вариант": list(_opt_counts.keys()),
-                            "Количество": list(_opt_counts.values())
-                        }),
-                        hide_index=True,
-                        use_container_width=False
-                    )
+                    with st.expander("Распределение ответов", expanded=False):
+                        st.dataframe(
+                            pd.DataFrame({
+                                "Вариант": [lbl for col, lbl in _col_label_map.items()],
+                                "Количество": [int(_src_cols[col].notna().sum()) for col in _col_label_map]
+                            }),
+                            hide_index=True,
+                            use_container_width=False
+                        )
 
                     _available_labels = [
                         lbl for col, lbl in _col_label_map.items() if col not in _used_cols
@@ -564,16 +575,11 @@ if st.session_state.stage == 2:
                     st.write("**Добавленные группы:**")
                     for _gname, _gvals in list(_var_rules.items()):
                         if _sel_type in ["Один ответ", "Шкала"]:
-                            _col_data = _data[_sel_var].dropna()
-                            _gcount = int(_col_data.isin(_gvals).sum())
                             _display = ', '.join(str(v) for v in _gvals)
                         else:
-                            _gcount = len(_gvals)
-                            _display = ', '.join(
-                                _col_label_map.get(c, c) for c in _gvals
-                            )
+                            _display = ', '.join(_col_label_map.get(c, c) for c in _gvals)
                         _c1, _c2 = st.columns([6, 1])
-                        _c1.markdown(f"**{_gname}** — {_gcount} зн.: {_display}")
+                        _c1.markdown(f"**{_gname}**: {_display}")
                         if _c2.button("✕", key=f"del_recode_{_derived_code}_{_gname}", help="Удалить группу"):
                             del st.session_state["recode_defs"][_derived_code]["groups"][_gname]
                             if not st.session_state["recode_defs"][_derived_code]["groups"]:
@@ -612,23 +618,21 @@ if st.session_state.stage == 2:
                             _counter = st.session_state["recode_counter"]
                             _derived_code = f"REC{_counter}_"
                             st.session_state["recode_counter"] += 1
+                            _is_multi = _sel_type == "Множественный ответ"
                             st.session_state["recode_defs"][_derived_code] = {
                                 "source_var": _sel_var,
                                 "source_label": _selected_label,
-                                "var_type": (
-                                    "multiple" if _sel_type == "Множественный ответ" else "single"
-                                ),
+                                "var_type": "multiple" if _is_multi else "single",
+                                "col_label_map": _col_label_map if _is_multi else {},
                                 "groups": {}
                             }
                             _new_row = pd.DataFrame({
                                 "Переменная": [_derived_code],
                                 "Вопрос": [f"{_selected_label} (перекод)"],
                                 "Тип вопроса": [
-                                    "Множественный ответ"
-                                    if _sel_type == "Множественный ответ"
-                                    else "Один ответ"
+                                    "Множественный ответ" if _is_multi else "Один ответ"
                                 ],
-                                "Вывести разрез": [True]
+                                "Вывести разрез": [False]
                             })
                             st.session_state["var_df"] = pd.concat(
                                 [st.session_state["var_df"], _new_row], ignore_index=True
@@ -724,19 +728,33 @@ if st.session_state.stage == 3:
         _src_var = _rdef["source_var"]
         if _rdef["var_type"] == "single":
             _src = data[_src_var]
-            _derived = pd.Series(np.nan, index=_src.index, dtype=object)
+            # Start with original values; grouped values get replaced by group name
+            _derived = _src.copy().astype(object)
             for _gname, _gvals in _rdef["groups"].items():
                 _derived[_src.isin(_gvals)] = _gname
             _recode_temp[_rcode] = _derived.to_frame(name=_rcode)
         elif _rdef["var_type"] == "multiple":
             _src_df = data.filter(like=_src_var)
             _frames = {}
+            _used_cols = set()
             for _gname, _gcols in _rdef["groups"].items():
                 _valid = [c for c in _gcols if c in _src_df.columns]
                 if _valid:
                     _combined = _src_df[_valid].notna().any(axis=1)
                     _frames[f"{_rcode}_{_gname}"] = pd.Series(
                         np.where(_combined, 1.0, np.nan), index=_src_df.index
+                    )
+                    _used_cols.update(_valid)
+            # Ungrouped columns pass through as individual options
+            for _col in _src_df.columns:
+                if _col not in _used_cols:
+                    if _col in param_names.index:
+                        _full = str(param_names.at[_col, 0])
+                        _lbl = _full.split(" - ")[-1] if " - " in _full else _full
+                    else:
+                        _lbl = _col
+                    _frames[f"{_rcode}_{_lbl}"] = pd.Series(
+                        np.where(_src_df[_col].notna(), 1.0, np.nan), index=_src_df.index
                     )
             if _frames:
                 _recode_temp[_rcode] = pd.DataFrame(_frames, index=data.index)
