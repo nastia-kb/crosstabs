@@ -445,14 +445,12 @@ if st.session_state.stage == 1:
     st.session_state["data"] = data
     st.session_state["param_names"] = param_names
     st.session_state["recode_defs"] = {}
-    st.session_state["recode_counter"] = 0
 
     set_state(2)
 
 if st.session_state.stage == 2:
     if "recode_defs" not in st.session_state:
         st.session_state["recode_defs"] = {}
-        st.session_state["recode_counter"] = 0
 
     _recode_defs = st.session_state["recode_defs"]
     _expander_label = (
@@ -481,10 +479,10 @@ if st.session_state.stage == 2:
                 st.markdown(f"- **{_rdef['source_label']}** → {_groups_str}")
             st.divider()
 
-        # Variable selector — only original variables (no REC-derived)
+        # Variable selector — exclude already-derived variables
         _recodeable_df = _var_df[
             _var_df["Тип вопроса"].isin(["Один ответ", "Шкала", "Множественный ответ"])
-            & ~_var_df["Переменная"].str.startswith("REC")
+            & ~_var_df["Переменная"].isin(_recode_defs.keys())
         ]
 
         if _recodeable_df.empty:
@@ -545,8 +543,8 @@ if st.session_state.stage == 2:
                     else:
                         _col_label_map = {}
                         for _col in _src_cols.columns:
-                            if _col in _param_names.columns:
-                                _full = str(_param_names[_col].iloc[0])
+                            if _col in _param_names.index:
+                                _full = str(_param_names.loc[_col, 0])
                                 _opt = _full.split(" - ")[-1] if " - " in _full else _full
                                 _col_label_map[_col] = _opt
                             else:
@@ -615,9 +613,13 @@ if st.session_state.stage == 2:
                 if st.button("Добавить группу", key=f"recode_add_{_sel_var}"):
                     if _new_name.strip() and _sel_vals:
                         if _derived_code is None:
-                            _counter = st.session_state["recode_counter"]
-                            _derived_code = f"REC{_counter}_"
-                            st.session_state["recode_counter"] += 1
+                            _existing_nums = set()
+                            for _v in st.session_state["var_df"]["Переменная"]:
+                                _m = re.match(r'[qQ](\d+)', _v)
+                                if _m:
+                                    _existing_nums.add(int(_m.group(1)))
+                            _next_num = (max(_existing_nums) + 1) if _existing_nums else 1
+                            _derived_code = f"q{_next_num}_"
                             _is_multi = _sel_type == "Множественный ответ"
                             st.session_state["recode_defs"][_derived_code] = {
                                 "source_var": _sel_var,
