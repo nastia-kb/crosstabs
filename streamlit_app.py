@@ -355,7 +355,6 @@ if st.session_state.stage == 1:
             data.rename(columns={i: i+"_"}, inplace = True)
             unique_vars.append(i+"_")
     
-    data.drop(columns = ['№ записи', 'id', 'ac', 'starttime', 'endtime', 'surveytime', 'status'], inplace = True)
     param_names = data.iloc[0, :].to_frame()
     data.drop([0, 1], inplace = True)
     data.replace(" ", np.nan, inplace = True)
@@ -518,8 +517,10 @@ if st.session_state.stage == 3:
         new_data.replace(0, np.nan, inplace = True)
 
     if need_weight:
-        new_data["wt"] = data["wt"]
-        new_data.iloc[:, :-1] = new_data.iloc[:, :-1].mul(data["wt"], axis=0)
+        temp_data = data.copy()
+        temp_data.columns = temp_data.columns.str.lower()
+        new_data["wt"] = temp_data["wt"]
+        new_data.iloc[:, :-1] = new_data.iloc[:, :-1].mul(temp_data["wt"], axis=0)
     
     buffer = io.BytesIO()
     rows_n = 0
@@ -667,7 +668,7 @@ if st.session_state.stage == 3:
                 temp_data.dropna(inplace=True)
 
                 if need_weight:
-                    wts = data.loc[temp_data.index, "wt"]
+                    wts = new_data.loc[temp_data.index, "wt"]
                     sums = np.sum(temp_data * wts)
                     if wts.sum() > 0:
                         average = np.average(temp_data, weights=wts)
@@ -695,7 +696,7 @@ if st.session_state.stage == 3:
                         group_index_fin = [item for item in group_index if item in temp_data.index]
                         group_data = temp_data.loc[group_index_fin]
                         if need_weight:
-                            wts = data.loc[group_index_fin, "wt"]
+                            wts = new_data.loc[group_index_fin, "wt"]
                             sums = np.sum(group_data * wts)
                             if wts.sum() > 0:
                                 avg_g = np.average(group_data, weights=wts)
@@ -784,7 +785,7 @@ if st.session_state.stage == 3:
                 temp_data.dropna(inplace = True)
 
                 if need_weight:
-                    wts = data.loc[temp_data.index, "wt"]
+                    wts = new_data.loc[temp_data.index, "wt"]
                     sums = np.sum(temp_data * wts)
                     if wts.sum() > 0:
                         average = np.average(temp_data, weights=wts)
@@ -815,7 +816,7 @@ if st.session_state.stage == 3:
                         group_data = temp_data.loc[group_index_fin]
 
                         if need_weight:
-                            wts = data.loc[group_index_fin, "wt"]
+                            wts = new_data.loc[group_index_fin, "wt"]
                             sums = np.sum(group_data * wts)
                             if wts.sum()>0:
                                 average = np.average(group_data, weights=wts)
