@@ -274,8 +274,6 @@ def write_matrix_block(writer, matrix_table, matrix_is_numeric, matrix_row_n, ma
         if z_crit > 0:
             m_cl, m_cc, m_sl = compute_mean_significance(full, col_map, n_base_rows, z_crit)
             matrix_row_n_sig = write_formatted_table(writer, 'matrixes_sig', full, col_map, matrix_row_n_sig, n_base_rows, col_letters=m_cl, colored_cells=m_cc, sig_letters=m_sl, value_num_format='0.00')
-        else:
-            matrix_row_n_sig = write_formatted_table(writer, 'matrixes_sig', full, col_map, matrix_row_n_sig, n_base_rows, value_num_format='0.00')
     else:
         weights = matrix_table.iloc[-n_base_rows].astype(float)
         shares = matrix_table.iloc[:-n_base_rows].astype(float)
@@ -293,8 +291,6 @@ def write_matrix_block(writer, matrix_table, matrix_is_numeric, matrix_row_n, ma
         if z_crit > 0:
             m_cl, m_cc, m_sl = compute_significance(full, col_map, n_base_rows, z_crit, restrict_to_same_slice=False)
             matrix_row_n_sig = write_formatted_table(writer, 'matrixes_sig', full, col_map, matrix_row_n_sig, n_base_rows, col_letters=m_cl, colored_cells=m_cc, sig_letters=m_sl)
-        else:
-            matrix_row_n_sig = write_formatted_table(writer, 'matrixes_sig', full, col_map, matrix_row_n_sig, n_base_rows)
     return matrix_row_n + 3, matrix_row_n_sig + 3
 
 
@@ -651,8 +647,6 @@ if st.session_state.stage == 3:
                     write_formatted_table(writer, 'tables_sig', table, col_slice_map, rows_n_sig, n_base_rows,
                                           col_letters=col_letters, colored_cells=colored_cells,
                                           sig_letters=sig_letters)
-                else:
-                    write_formatted_table(writer, 'tables_sig', table, col_slice_map, rows_n_sig, n_base_rows)
 
                 if need_freqs:
                     freq_table.to_excel(writer, sheet_name='frequencies', merge_cells = True, startrow=rows_n, startcol=0)
@@ -739,9 +733,6 @@ if st.session_state.stage == 3:
                     write_formatted_table(writer, 'tables_sig', table, col_slice_map, rows_n_sig,
                                            num_n_base_rows, col_letters=nc, colored_cells=ncc,
                                            sig_letters=nsl, value_num_format='0.00')
-                else:
-                    write_formatted_table(writer, 'tables_sig', table, col_slice_map, rows_n_sig,
-                                           num_n_base_rows, value_num_format='0.00')
 
                 rows_n = rows_n + table.shape[0] + 3
                 rows_n_sig = rows_n_sig + table.shape[0] + (1 if z_crit > 0 else 0) + 3
@@ -867,9 +858,6 @@ if st.session_state.stage == 3:
                                            num_n_base_rows, col_letters=num_col_letters,
                                            colored_cells=num_colored_cells, sig_letters=num_sig_letters,
                                            value_num_format='0.00')
-                else:
-                    write_formatted_table(writer, 'tables_sig', table, col_slice_map, rows_n_sig,
-                                           num_n_base_rows, value_num_format='0.00')
 
                 if need_freqs:
                     table.to_excel(writer, sheet_name='frequencies', merge_cells = True, startrow=rows_n, startcol=0)
