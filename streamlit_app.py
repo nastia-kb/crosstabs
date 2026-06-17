@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import io
+import re
 import string
 from scipy.stats import t
 
@@ -358,7 +359,27 @@ if st.session_state.stage == 1:
     param_names = data.iloc[0, :].to_frame()
     data.drop([0, 1], inplace = True)
     data.replace(" ", np.nan, inplace = True)
+    
+    aicoding_groups = {}
+    for col in data.columns:
+        if "AICodingr" in col:
+            base = re.sub(r'\d+$', '', col)  # "q50AICodingr1" -> "q50AICodingr"
+            aicoding_groups.setdefault(base, []).append(col)
 
+    for base, cols in aicoding_groups.items():
+        var_key = base + "_"  # "q50AICodingr_" — will be the unique_vars entry
+        first_label = str(param_names.at[cols[0], 0])
+        question_name = first_label[:first_label.rfind(" - ")] if " - " in first_label else first_label
+        all_vals = pd.Series(data[cols].values.flatten()).dropna()
+        unique_vals = [v for v in all_vals.unique() if str(v).strip()]
+        for val in unique_vals:
+            bin_col = var_key + "_" + str(val)  # "q50AICodingr__OZON"
+            mask = data[cols].isin([val]).any(axis=1)
+            data[bin_col] = np.where(mask, 1, np.nan)
+            param_names.loc[bin_col, 0] = question_name + " - " + str(val)
+        if var_key not in unique_vars:
+            unique_vars.append(var_key)
+    
     var_df = pd.DataFrame()
     for var in unique_vars:
         temp = data.filter(like = var)
