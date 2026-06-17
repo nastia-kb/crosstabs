@@ -487,6 +487,9 @@ if st.session_state.stage == 2:
             _var_codes = _recodeable_df["Переменная"].tolist()
             _label_to_code = dict(zip(_var_labels, _var_codes))
 
+            if st.session_state.pop("_recode_reset_selectbox", False):
+                st.session_state.pop("recode_var_selectbox", None)
+
             _selected_label = st.selectbox(
                 "Переменная для перекодирования",
                 ["— не выбрано —"] + _var_labels,
@@ -580,17 +583,6 @@ if st.session_state.stage == 2:
                                 ].reset_index(drop=True)
                             st.rerun()
 
-                # Completion signal
-                if _var_rules:
-                    st.success(
-                        f"Перекодирование «{_selected_label}» сохранено "
-                        f"({len(_var_rules)} гр.). "
-                        "Добавьте ещё группы, выберите другую переменную или нажмите «Все готово»."
-                    )
-                    if st.button("Перейти к следующей переменной →", key=f"next_var_{_sel_var}"):
-                        st.session_state["recode_var_selectbox"] = "— не выбрано —"
-                        st.rerun()
-
                 # Add group controls
                 st.write("**Добавить группу:**")
                 _col_a, _col_b = st.columns([2, 3])
@@ -647,6 +639,17 @@ if st.session_state.stage == 2:
                         st.rerun()
                     else:
                         st.warning("Укажите название группы и выберите хотя бы одно значение")
+
+                # Completion signal — shown after add-group block
+                if _var_rules:
+                    st.success(
+                        f"Перекодирование «{_selected_label}» сохранено "
+                        f"({len(_var_rules)} гр.). "
+                        "Добавьте ещё группы, выберите другую переменную или нажмите «Все готово»."
+                    )
+                    if st.button("Перейти к следующей переменной →", key=f"next_var_{_sel_var}"):
+                        st.session_state["_recode_reset_selectbox"] = True
+                        st.rerun()
 
     st.divider()
 
