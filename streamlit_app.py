@@ -294,7 +294,7 @@ def write_matrix_block(writer, matrix_table, matrix_is_numeric, matrix_row_n, ma
             matrix_row_n_sig = write_formatted_table(writer, 'matrixes_sig', full, col_map, matrix_row_n_sig, n_base_rows, col_letters=m_cl, colored_cells=m_cc, sig_letters=m_sl)
     return matrix_row_n + 3, matrix_row_n_sig + 3
 
-
+st.set_page_config(layout="wide")
 st.title("Вывод таблиц")
 
 st.info("Здесь можно вывести кросс-таблицы со взвешиванием и без для опроса EnjoySurvey\n\n" \
@@ -525,7 +525,7 @@ if st.session_state.stage == 2:
                                 "Количество ответов": _value_counts.values.tolist()
                             }),
                             hide_index=True,
-                            use_container_width=False
+                            width='content'
                         )
 
                     _used = set()
@@ -561,7 +561,7 @@ if st.session_state.stage == 2:
                                 "Количество": [int(_src_cols[col].notna().sum()) for col in _col_label_map]
                             }),
                             hide_index=True,
-                            use_container_width=False
+                            width='content'
                         )
 
                     _available_labels = [
@@ -686,7 +686,6 @@ if st.session_state.stage == 2:
             "Вопрос": "Вопрос",
             "Тип вопроса": st.column_config.SelectboxColumn(
                 "Тип вопроса",
-                width="medium",
                 options=[
                     "Один ответ",
                     "Множественный ответ",
